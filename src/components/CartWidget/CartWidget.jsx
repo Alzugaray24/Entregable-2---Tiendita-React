@@ -1,25 +1,34 @@
-import { Box } from "@chakra-ui/react";
+import { Box, Text } from "@chakra-ui/react";
 import { BiCart } from "react-icons/bi";
-import "./CartWidget.css";
-import { useContext } from "react";
-import { Context } from "../../context/CartContext";
-import { Context as CartContext } from "../../context/CartContext";
 import { Link } from "react-router-dom";
+import { useSelector } from "react-redux";
+import { useState, useEffect } from "react";
+
+import "./CartWidget.css";
+
 const CartWidget = () => {
-  const { totalQuantity } = useContext(CartContext);
+  const [quantity, setQuantity] = useState(0);
+
+  const cart = useSelector((state) => state.cart.value.items);
+
+  useEffect(() => {
+    const calculateQuantity = () => {
+      const updateQuantity = cart.reduce(
+        (acc, actualValue) => acc + actualValue.quantity,
+        0
+      );
+      setQuantity(updateQuantity);
+    };
+
+    calculateQuantity();
+  }, [cart]);
 
   return (
-    <Box
-      width={"40%"}
-      ml={4}
-      display="flex"
-      align="center"
-      justify={"space-around"}
-    >
+    <Box ml={4} display="flex" align="center" justify={"space-around"}>
       <Link to={"/cart"}>
-        <BiCart size={50} color="#fff" />
+        <BiCart size={50} />
       </Link>
-      <span className="cartQuantity">{totalQuantity}</span>
+      <Text fontSize="2xl">{quantity}</Text>
     </Box>
   );
 };

@@ -1,45 +1,107 @@
-import { Box, Flex, Heading } from "@chakra-ui/react";
+import {
+  Box,
+  Flex,
+  Heading,
+  Modal,
+  ModalOverlay,
+  ModalContent,
+  ModalHeader,
+  ModalBody,
+  ModalFooter,
+  Button,
+  useDisclosure,
+} from "@chakra-ui/react";
 import { useEffect, useState } from "react";
-import { getProducts, getProductsByCategory } from "../../data/asyncMock";
-import ItemList from "../ItemList/ItemList";
 import { useParams } from "react-router-dom";
-import { Spinner } from "@chakra-ui/react";
+import {
+  useGetProductsByCategoryQuery,
+  useGetProductsQuery,
+} from "../../services/Shop/shopService";
+import ItemList from "../ItemList/ItemList";
 import LoaderContainer from "../LoaderContainer/LoaderContainer";
+import { useSelector, useDispatch } from "react-redux";
+import { setAlertFalse } from "../../features/Cart/CartSlice";
+
 const ItemListContainer = ({ title }) => {
   const [data, setData] = useState([]);
-  const [isLoading, setIsLoading] = useState(true);
   const { categoryId } = useParams();
+  const showAlert = useSelector((state) => state.cart.value.showAlert);
+  const dispatch = useDispatch();
+  const { isOpen, onOpen, onClose } = useDisclosure();
+
+  const {
+    data: allProducts,
+    isLoading: isLoadingAllProducts,
+    error: errorAllProducts,
+  } = useGetProductsQuery();
+  const {
+    data: prodsByCategory,
+    isLoading: isLoadingProdsByCategory,
+    error: errorProdsByCategory,
+  } = useGetProductsByCategoryQuery(categoryId);
+
+  const isLoading = categoryId
+    ? isLoadingProdsByCategory
+    : isLoadingAllProducts;
+  const error = categoryId ? errorProdsByCategory : errorAllProducts;
+
   useEffect(() => {
-    setIsLoading(true);
     if (categoryId) {
-      getProductsByCategory(categoryId)
-        .then((prod) => setData(prod))
-        .catch((err) => console.log(err))
-        .finally(() => setIsLoading(false));
+      if (prodsByCategory) {
+        setData(prodsByCategory);
+      }
     } else {
-      getProducts()
-        .then((prod) => {
-          setData(prod);
-        })
-        .catch((err) => console.log(err))
-        .finally(() => {
-          setIsLoading(false);
-        });
+      if (allProducts) {
+        setData(allProducts);
+      }
     }
-  }, [categoryId]);
+  }, [categoryId, prodsByCategory, allProducts]);
+
+  useEffect(() => {
+    if (showAlert) {
+      onOpen();
+    }
+  }, [showAlert, onOpen]);
+
+  if (error) {
+    return <div>Error loading products: {error.message}</div>;
+  }
+
+  const handleClose = () => {
+    dispatch(setAlertFalse());
+    onClose();
+  };
 
   return (
-    <Flex direction={"column"} justify={"center"} align={"center"} m={4}>
-      <Box>
-        <Heading>
-          {title} {categoryId && categoryId}
+    <Flex direction="column" align="center" m={4}>
+      <Box mb={4} w="full" maxW="1200px">
+        <Heading size="lg" textAlign="center">
+          {title} {categoryId && ` - ${categoryId}`}
         </Heading>
       </Box>
       {isLoading ? (
         <LoaderContainer isLoading={isLoading} />
       ) : (
-        <ItemList data={data} />
+        <Box w="full" maxW="1200px">
+          <ItemList data={data} />
+        </Box>
       )}
+
+      {/* Modal for alert */}
+      <Modal isOpen={isOpen} onClose={handleClose}>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Acceso Restringido</ModalHeader>
+          <ModalBody>
+            Debes iniciar sesión para tener acceso al detalle.
+          </ModalBody>
+          <ModalFooter>
+            <Button colorScheme="blue" onClick={handleClose}>
+              Cerrar
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
     </Flex>
   );
 };
